@@ -1,0 +1,833 @@
+﻿
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Checklist</title>
+
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --surface-soft: #ffffff;
+      --border: #dddddd;
+      --input-border: #cccccc;
+      --text: #212529;
+      --th-bg: #ffffff;
+      --hidden-row-bg: #f1f3f5;
+      --orange: #6f42c1;
+      --orange-hover: #59339c;
+      --orange-soft: #0d6efd;
+      --danger: #dc3545;
+      --danger-hover: #b52a37;
+      --success: #25d366;
+      --success-hover: #1ebc5b;
+      --neutral-btn: #495057;
+      --neutral-btn-hover: #343a40;
+      --table-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      --theme-btn: #495057;
+      --theme-btn-hover: #343a40;
+    }
+
+    body.theme-dark {
+      --bg: #121212;
+      --surface: #1a1a1a;
+      --surface-soft: #222222;
+      --border: #343434;
+      --input-border: #343434;
+      --text: #f2f2f2;
+      --th-bg: #1f1f1f;
+      --hidden-row-bg: #242424;
+      --orange: #c46f1f;
+      --orange-hover: #a85e1a;
+      --orange-soft: #8f541c;
+      --danger: #a93a3a;
+      --danger-hover: #8e2f2f;
+      --success: #2d8f5e;
+      --success-hover: #24764e;
+      --neutral-btn: #3f3f3f;
+      --neutral-btn-hover: #333333;
+      --table-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      --theme-btn: #8f541c;
+      --theme-btn-hover: #a85e1a;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 8px;
+      padding-top: 56px;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 480px;
+      margin: auto;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    select {
+      margin-top: 5px;
+      width: 95%;
+      font-size: 14px;
+      padding: 5px;
+    }
+
+    .show-edit-wrap {
+      margin-top: 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 280px;
+      border-collapse: collapse;
+      background: var(--surface);
+      box-shadow: var(--table-shadow);
+    }
+
+    th, td {
+      padding: 5px;
+      border: 1px solid var(--border);
+      text-align: center;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    th {
+      background: var(--th-bg);
+    }
+
+    input[type="number"] {
+      width: 60px;
+      text-align: center;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--input-border);
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      font-size: 13px;
+      border: 1px solid var(--input-border);
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    select {
+      background: var(--surface-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--orange);
+    }
+
+    .controls {
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    button {
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 15px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 95%;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    #addRowBtn {
+      background: var(--orange);
+    }
+
+    #addRowBtn:hover {
+      background: var(--orange-hover);
+    }
+
+    #whatsappBtn {
+      background: var(--success);
+    }
+
+    #whatsappBtn:hover {
+      background: var(--success-hover);
+    }
+
+    #clearBtn {
+      background: var(--danger);
+    }
+
+    #clearBtn:hover {
+      background: var(--danger-hover);
+    }
+
+    #themeBtn {
+      background: var(--theme-btn);
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      width: 40px;
+      height: 40px;
+      margin: 0;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 20px;
+      line-height: 1;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    #themeBtn:hover {
+      background: var(--theme-btn-hover);
+    }
+
+    .order-controls {
+      white-space: nowrap;
+    }
+
+    .move-btn {
+      width: auto;
+      margin: 0 2px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      background: var(--neutral-btn);
+    }
+
+    .move-btn:hover {
+      background: var(--neutral-btn-hover);
+    }
+
+    .toggle-hide-btn {
+      width: auto;
+      margin: 0 2px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      background: var(--orange-soft);
+    }
+
+    .toggle-hide-btn:hover {
+      background: var(--orange-hover);
+    }
+
+    .delete-btn {
+      width: auto;
+      margin: 0 2px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      background: var(--danger);
+    }
+
+    .delete-btn:hover {
+      background: var(--danger-hover);
+    }
+
+    tr.hidden-row td {
+      opacity: 0.55;
+      background: var(--hidden-row-bg);
+    }
+
+    #estoqueTable:not(.show-edit) .controls-col {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="themeBtn" onclick="alternarTema()" aria-label="Alternar tema" title="Alternar tema">â˜€</button>
+
+  <div class="header">
+    <h2>Checklist</h2>
+
+    <label for="tipoEstoque">Tipo:</label>
+    <select id="tipoEstoque">
+      <option value="hamburgueria">Insumos Hamburgueria</option>
+      <option value="restaurante">Insumos Restaurante</option>
+      <option value="checklist">Checklist Diário</option>
+    </select>
+
+    <label class="show-edit-wrap">
+      <input type="checkbox" id="mostrarEdicao">
+      Mostrar controles de edição e itens ocultos
+    </label>
+  </div>
+
+  <div class="table-container">
+    <table id="estoqueTable">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>OK</th>
+          <th class="controls-col">AÃ§Ãµes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Gerado via JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="controls">
+    <button id="addRowBtn" onclick="adicionarEntrada()">Nova entrada</button>
+    <button id="whatsappBtn" onclick="enviarWhatsApp()">Enviar para WhatsApp</button>
+    <button id="clearBtn" onclick="limparDados()">Limpar contadores</button>
+  </div>
+
+  <script>
+    const produtosFixosPorTipo = {
+      hamburgueria: [
+        "Pão de hambúrguer",
+        "Carne de hambúrguer",
+        "Queijo",
+        "Alface",
+        "Tomate",
+        "Bacon"
+      ],
+      restaurante: [
+        "Arroz",
+        "Feijão",
+        "Óleo",
+        "Sal",
+        "Alho",
+        "Cebola"
+      ],
+      checklist: [
+        "Limpeza da cozinha",
+        "Conferir validade dos insumos",
+        "Conferir freezers e geladeiras"
+      ]
+    };
+
+    const tbody = document.querySelector("#estoqueTable tbody");
+    const estoqueTableEl = document.getElementById("estoqueTable");
+    const tipoEstoqueEl = document.getElementById("tipoEstoque");
+    const mostrarEdicaoEl = document.getElementById("mostrarEdicao");
+    const themeBtnEl = document.getElementById("themeBtn");
+    const EXTRA_STORAGE_KEY = "produtosExtrasV3";
+    const ORDER_STORAGE_KEY = "ordemProdutosV3";
+    const HIDDEN_STORAGE_KEY = "itensOcultosV3";
+    const DELETED_STORAGE_KEY = "itensExcluidosV3";
+    const CHECK_STORAGE_KEY = "marcacoesV1";
+    const SHOW_EDIT_STORAGE_KEY = "mostrarEdicaoV1";
+    const THEME_STORAGE_KEY = "temaV1";
+    const SELECTED_TYPE_STORAGE_KEY = "tipoSelecionadoV1";
+    let extraCounter = 0;
+    const idsOcultos = new Set();
+    const idsExcluidos = new Set();
+
+    function tipoAtual() {
+      return tipoEstoqueEl.value;
+    }
+
+    function chavePorTipo(chaveBase) {
+      return `${chaveBase}:${tipoAtual()}`;
+    }
+
+    function obterProdutosFixosDoTipo() {
+      const lista = produtosFixosPorTipo[tipoAtual()] || [];
+      return lista.map((nome, indice) => ({ id: `f-${tipoAtual()}-${indice}`, nome }));
+    }
+
+    function novoIdExtra() {
+      extraCounter += 1;
+      return `e-${tipoAtual()}-${Date.now()}-${extraCounter}`;
+    }
+
+    function escaparHtml(texto) {
+      return String(texto)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function criarLinha(id, nomeProduto, isExtra = false) {
+      const tr = document.createElement("tr");
+      tr.dataset.rowId = id;
+      tr.dataset.isExtra = isExtra ? "1" : "0";
+      tr.dataset.hidden = "0";
+
+      tr.innerHTML = `
+        <td>${escaparHtml(nomeProduto)}</td>
+        <td><input type="checkbox"></td>
+        <td class="order-controls controls-col">
+          <button type="button" class="move-btn" data-dir="-1">↑</button>
+          <button type="button" class="move-btn" data-dir="1">↓</button>
+          <button type="button" class="toggle-hide-btn">Ocultar</button>
+          <button type="button" class="delete-btn">Excluir</button>
+        </td>
+      `;
+
+      tr.querySelectorAll(".move-btn").forEach(btn => {
+        btn.addEventListener("click", () => moverLinha(tr, Number(btn.dataset.dir)));
+      });
+
+      tr.querySelector(".toggle-hide-btn").addEventListener("click", () => alternarOculto(tr));
+      tr.querySelector(".delete-btn").addEventListener("click", () => excluirLinha(tr));
+      tr.querySelector("input[type='checkbox']").addEventListener("change", salvarMarcacoes);
+
+      tbody.appendChild(tr);
+      return tr;
+    }
+
+    function salvarExcluidos() {
+      localStorage.setItem(chavePorTipo(DELETED_STORAGE_KEY), JSON.stringify(Array.from(idsExcluidos)));
+    }
+
+    function carregarExcluidos() {
+      const excluidosSalvos = localStorage.getItem(chavePorTipo(DELETED_STORAGE_KEY));
+      if (!excluidosSalvos) return;
+
+      try {
+        const lista = JSON.parse(excluidosSalvos);
+        if (Array.isArray(lista)) {
+          idsExcluidos.clear();
+          lista.forEach(id => idsExcluidos.add(String(id)));
+        }
+      } catch (e) {
+        console.error("Erro ao carregar itens excluidos:", e);
+      }
+    }
+
+    function salvarOcultos() {
+      localStorage.setItem(chavePorTipo(HIDDEN_STORAGE_KEY), JSON.stringify(Array.from(idsOcultos)));
+    }
+
+    function carregarOcultos() {
+      const ocultosSalvos = localStorage.getItem(chavePorTipo(HIDDEN_STORAGE_KEY));
+      if (!ocultosSalvos) return;
+
+      try {
+        const lista = JSON.parse(ocultosSalvos);
+        if (Array.isArray(lista)) {
+          idsOcultos.clear();
+          lista.forEach(id => idsOcultos.add(String(id)));
+        }
+      } catch (e) {
+        console.error("Erro ao carregar itens ocultos:", e);
+      }
+    }
+
+    function atualizarVisibilidadeLinha(linha) {
+      const isHidden = linha.dataset.hidden === "1";
+      const mostrarOcultos = mostrarEdicaoEl.checked;
+      linha.classList.toggle("hidden-row", isHidden);
+      linha.style.display = isHidden && !mostrarOcultos ? "none" : "";
+
+      const btn = linha.querySelector(".toggle-hide-btn");
+      if (btn) btn.textContent = isHidden ? "Mostrar" : "Ocultar";
+    }
+
+    function aplicarOcultosSalvos() {
+      Array.from(tbody.querySelectorAll("tr")).forEach(linha => {
+        const id = linha.dataset.rowId;
+        linha.dataset.hidden = idsOcultos.has(id) ? "1" : "0";
+        atualizarVisibilidadeLinha(linha);
+      });
+    }
+
+    function alternarOculto(linha) {
+      const id = linha.dataset.rowId;
+      const ocultando = linha.dataset.hidden !== "1";
+
+      linha.dataset.hidden = ocultando ? "1" : "0";
+      if (ocultando) {
+        idsOcultos.add(id);
+      } else {
+        idsOcultos.delete(id);
+      }
+
+      atualizarVisibilidadeLinha(linha);
+      salvarEstadoTabela();
+    }
+
+    function excluirLinha(linha) {
+      const nome = obterNomeProduto(linha) || "este item";
+      if (!confirm(`Deseja excluir ${nome}?`)) return;
+
+      const id = linha.dataset.rowId;
+      if (linha.dataset.isExtra === "0") {
+        idsExcluidos.add(id);
+      }
+
+      idsOcultos.delete(id);
+      linha.remove();
+      salvarEstadoTabela();
+    }
+
+    function moverLinha(linha, direcao) {
+      const destino = direcao < 0 ? linha.previousElementSibling : linha.nextElementSibling;
+      if (!destino) return;
+
+      if (direcao < 0) {
+        tbody.insertBefore(linha, destino);
+      } else {
+        tbody.insertBefore(destino, linha);
+      }
+
+      salvarEstadoTabela();
+    }
+
+    function salvarExtras() {
+      const extras = Array.from(tbody.querySelectorAll("tr"))
+        .filter(linha => linha.dataset.isExtra === "1")
+        .map(linha => ({
+          id: linha.dataset.rowId,
+          nome: obterNomeProduto(linha)
+        }))
+        .filter(item => item.nome);
+
+      localStorage.setItem(chavePorTipo(EXTRA_STORAGE_KEY), JSON.stringify(extras));
+    }
+
+    function carregarExtras() {
+      const extrasSalvos = localStorage.getItem(chavePorTipo(EXTRA_STORAGE_KEY));
+
+      if (extrasSalvos) {
+        try {
+          const lista = JSON.parse(extrasSalvos);
+          if (Array.isArray(lista)) {
+            const extrasNormalizados = lista
+              .map(item => {
+                const id = String(item && item.id ? item.id : novoIdExtra());
+                const nome = String(item && item.nome ? item.nome : "").trim();
+                return { id, nome };
+              })
+              .filter(item => item.nome);
+
+            localStorage.setItem(chavePorTipo(EXTRA_STORAGE_KEY), JSON.stringify(extrasNormalizados));
+            return extrasNormalizados;
+          }
+        } catch (e) {
+          console.error("Erro ao carregar produtos extras:", e);
+        }
+      }
+
+      return [];
+    }
+
+    function salvarOrdem() {
+      const ordem = Array.from(tbody.querySelectorAll("tr")).map(linha => linha.dataset.rowId);
+      localStorage.setItem(chavePorTipo(ORDER_STORAGE_KEY), JSON.stringify(ordem));
+    }
+
+    function aplicarOrdemSalva() {
+      const ordemSalva = localStorage.getItem(chavePorTipo(ORDER_STORAGE_KEY));
+      if (!ordemSalva) return;
+
+      try {
+        const ordem = JSON.parse(ordemSalva);
+        if (!Array.isArray(ordem)) return;
+
+        const mapaLinhas = new Map(
+          Array.from(tbody.querySelectorAll("tr")).map(linha => [linha.dataset.rowId, linha])
+        );
+
+        tbody.innerHTML = "";
+        ordem.forEach(id => {
+          const linha = mapaLinhas.get(id);
+          if (linha) {
+            tbody.appendChild(linha);
+            mapaLinhas.delete(id);
+          }
+        });
+
+        mapaLinhas.forEach(linha => tbody.appendChild(linha));
+      } catch (e) {
+        console.error("Erro ao aplicar ordem salva:", e);
+      }
+    }
+
+    function salvarMarcacoes() {
+      const dados = Array.from(tbody.querySelectorAll("tr")).map(linha => ({
+        id: linha.dataset.rowId,
+        marcado: linha.cells[1].querySelector("input[type='checkbox']").checked
+      }));
+      localStorage.setItem(chavePorTipo(CHECK_STORAGE_KEY), JSON.stringify(dados));
+    }
+
+    function carregarMarcacoes() {
+      const salvas = localStorage.getItem(chavePorTipo(CHECK_STORAGE_KEY));
+      if (!salvas) return;
+
+      try {
+        const lista = JSON.parse(salvas);
+        if (!Array.isArray(lista)) return;
+
+        const mapa = new Map(lista.map(item => [String(item.id), Boolean(item.marcado)]));
+        Array.from(tbody.querySelectorAll("tr")).forEach(linha => {
+          const valor = mapa.get(linha.dataset.rowId);
+          if (valor !== undefined) {
+            linha.cells[1].querySelector("input[type='checkbox']").checked = valor;
+          }
+        });
+      } catch (e) {
+        console.error("Erro ao carregar marcações:", e);
+      }
+    }
+
+    function salvarEstadoTabela() {
+      salvarExtras();
+      salvarOrdem();
+      salvarOcultos();
+      salvarExcluidos();
+      salvarMarcacoes();
+    }
+
+    function carregarTabelaDoTipo() {
+      tbody.innerHTML = "";
+      idsOcultos.clear();
+      idsExcluidos.clear();
+
+      carregarExcluidos();
+      obterProdutosFixosDoTipo()
+        .filter(prod => !idsExcluidos.has(prod.id))
+        .forEach(prod => criarLinha(prod.id, prod.nome, false));
+
+      carregarExtras().forEach(extra => criarLinha(extra.id, extra.nome, true));
+      aplicarOrdemSalva();
+      carregarOcultos();
+      aplicarOcultosSalvos();
+      carregarMarcacoes();
+      salvarOrdem();
+    }
+
+    function atualizarModoEdicao() {
+      const mostrar = mostrarEdicaoEl.checked;
+      estoqueTableEl.classList.toggle("show-edit", mostrar);
+      aplicarOcultosSalvos();
+      localStorage.setItem(SHOW_EDIT_STORAGE_KEY, mostrar ? "1" : "0");
+    }
+
+    function aplicarTema(tema) {
+      const isDark = tema === "dark";
+      document.body.classList.toggle("theme-dark", isDark);
+      themeBtnEl.textContent = isDark ? "☀" : "☾";
+      themeBtnEl.title = isDark ? "Ativar modo diurno" : "Ativar modo noturno";
+      themeBtnEl.setAttribute("aria-label", themeBtnEl.title);
+      localStorage.setItem(THEME_STORAGE_KEY, isDark ? "dark" : "light");
+    }
+
+    function alternarTema() {
+      const temaAtual = document.body.classList.contains("theme-dark") ? "dark" : "light";
+      aplicarTema(temaAtual === "dark" ? "light" : "dark");
+    }
+
+    function obterNomeProduto(linha) {
+      const prodInput = linha.cells[0].querySelector("input");
+      return prodInput ? prodInput.value.trim() : linha.cells[0].textContent.trim();
+    }
+
+    function adicionarEntrada() {
+      const nome = prompt("Digite o nome do novo item:");
+      if (nome === null) return;
+
+      const nomeLimpo = nome.trim();
+      if (!nomeLimpo) {
+        alert("Informe um nome válido para o item.");
+        return;
+      }
+
+      criarLinha(novoIdExtra(), nomeLimpo, true);
+      salvarEstadoTabela();
+    }
+
+    const tipoSalvo = localStorage.getItem(SELECTED_TYPE_STORAGE_KEY);
+    if (tipoSalvo && tipoEstoqueEl.querySelector(`option[value="${tipoSalvo}"]`)) {
+      tipoEstoqueEl.value = tipoSalvo;
+    }
+
+    carregarTabelaDoTipo();
+
+    mostrarEdicaoEl.checked = localStorage.getItem(SHOW_EDIT_STORAGE_KEY) === "1";
+    aplicarTema(localStorage.getItem(THEME_STORAGE_KEY) || "dark");
+    atualizarModoEdicao();
+    mostrarEdicaoEl.addEventListener("change", atualizarModoEdicao);
+    tipoEstoqueEl.addEventListener("change", () => {
+      localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, tipoAtual());
+      carregarTabelaDoTipo();
+    });
+
+    function gerarMensagem() {
+      const dataHora = new Date().toLocaleString("pt-BR");
+      const tipos = [
+        { id: "hamburgueria", nome: "Insumos Hamburgueria" },
+        { id: "restaurante", nome: "Insumos Restaurante" },
+        { id: "checklist", nome: "Checklist Diário" }
+      ];
+
+      const tipoOriginal = tipoAtual();
+      let mensagem = `📋 Checklist Geral\nData/Hora: ${dataHora}\n\n`;
+
+      tipos.forEach(tipo => {
+        const fixos = (produtosFixosPorTipo[tipo.id] || []).map((nome, indice) => ({
+          id: `f-${tipo.id}-${indice}`,
+          nome
+        }));
+
+        const extrasSalvos = localStorage.getItem(`${EXTRA_STORAGE_KEY}:${tipo.id}`);
+        let extras = [];
+        if (extrasSalvos) {
+          try {
+            const lista = JSON.parse(extrasSalvos);
+            if (Array.isArray(lista)) {
+              extras = lista
+                .map(item => ({
+                  id: String(item && item.id ? item.id : ""),
+                  nome: String(item && item.nome ? item.nome : "").trim()
+                }))
+                .filter(item => item.id && item.nome);
+            }
+          } catch (e) {
+            console.error("Erro ao ler extras para mensagem:", e);
+          }
+        }
+
+        const excluidosSalvos = localStorage.getItem(`${DELETED_STORAGE_KEY}:${tipo.id}`);
+        const idsExcluidosTipo = new Set();
+        if (excluidosSalvos) {
+          try {
+            const lista = JSON.parse(excluidosSalvos);
+            if (Array.isArray(lista)) lista.forEach(id => idsExcluidosTipo.add(String(id)));
+          } catch (e) {
+            console.error("Erro ao ler excluidos para mensagem:", e);
+          }
+        }
+
+        const ocultosSalvos = localStorage.getItem(`${HIDDEN_STORAGE_KEY}:${tipo.id}`);
+        const idsOcultosTipo = new Set();
+        if (ocultosSalvos) {
+          try {
+            const lista = JSON.parse(ocultosSalvos);
+            if (Array.isArray(lista)) lista.forEach(id => idsOcultosTipo.add(String(id)));
+          } catch (e) {
+            console.error("Erro ao ler ocultos para mensagem:", e);
+          }
+        }
+
+        const ordemSalva = localStorage.getItem(`${ORDER_STORAGE_KEY}:${tipo.id}`);
+        const ordem = [];
+        if (ordemSalva) {
+          try {
+            const lista = JSON.parse(ordemSalva);
+            if (Array.isArray(lista)) lista.forEach(id => ordem.push(String(id)));
+          } catch (e) {
+            console.error("Erro ao ler ordem para mensagem:", e);
+          }
+        }
+
+        const marcacoesSalvas = localStorage.getItem(`${CHECK_STORAGE_KEY}:${tipo.id}`);
+        const idsMarcados = new Set();
+        if (marcacoesSalvas) {
+          try {
+            const lista = JSON.parse(marcacoesSalvas);
+            if (Array.isArray(lista)) {
+              lista.forEach(item => {
+                if (item && item.marcado) idsMarcados.add(String(item.id));
+              });
+            }
+          } catch (e) {
+            console.error("Erro ao ler marcações para mensagem:", e);
+          }
+        }
+
+        const todosItens = [...fixos.filter(item => !idsExcluidosTipo.has(item.id)), ...extras];
+        const mapaItens = new Map(todosItens.map(item => [item.id, item.nome]));
+        const idsOrdenados = [];
+
+        ordem.forEach(id => {
+          if (mapaItens.has(id)) {
+            idsOrdenados.push(id);
+            mapaItens.delete(id);
+          }
+        });
+        mapaItens.forEach((_, id) => idsOrdenados.push(id));
+
+        const itensMarcados = idsOrdenados
+          .filter(id => idsMarcados.has(id) && !idsOcultosTipo.has(id))
+          .map(id => {
+            const nome = todosItens.find(item => item.id === id)?.nome || "";
+            return nome.trim();
+          })
+          .filter(Boolean);
+
+        if (itensMarcados.length > 0) {
+          mensagem += `${tipo.nome}\n`;
+          itensMarcados.forEach(nome => {
+            mensagem += `- ${nome}\n`;
+          });
+          mensagem += `\n`;
+        }
+      });
+
+      if (tipoOriginal !== tipoAtual()) {
+        tipoEstoqueEl.value = tipoOriginal;
+      }
+
+      return mensagem.trim();
+    }
+
+    function enviarWhatsApp() {
+      const mensagem = gerarMensagem();
+
+      const possuiItensMarcados = mensagem.includes("- ");
+
+      if (!possuiItensMarcados) {
+        alert("Nenhum item marcado.");
+        return;
+      }
+
+      const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      const url = isMobile
+        ? "whatsapp://send?text=" + encodeURIComponent(mensagem)
+        : "https://web.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
+
+      window.open(url, "_blank");
+    }
+
+    function limparDados() {
+      if (!confirm("Deseja realmente limpar todos os contadores?")) return;
+
+      document.querySelectorAll("input[type='checkbox']").forEach(input => input.checked = false);
+      ["hamburgueria", "restaurante", "checklist"].forEach(tipo => {
+        localStorage.removeItem(`${CHECK_STORAGE_KEY}:${tipo}`);
+      });
+    }
+  </script>
+
+</body>
+</html>
+
+
