@@ -463,12 +463,158 @@
     const SELECTED_TYPE_STORAGE_KEY = "tipoSelecionadoV1";
     const CATEGORIES_STORAGE_KEY = "categoriasV1";
     const FIXED_STORAGE_KEY = "produtosFixosCustomV1";
+    const ONLINE_SYNC_CONFIG = {
+      enabled: true,
+      firebaseDatabaseUrl: "https://projeto-estoque-e-insumos-default-rtdb.firebaseio.com",
+      firebaseAuthToken: "",
+      appId: "1:66840088079:web:06481255dcd71aec66dd7a",
+      pollIntervalMs: 5000
+    };
     let extraCounter = 0;
     let categoryCounter = 0;
     let categoriasConfiguradas = [];
     const idsOcultos = new Set();
     const idsExcluidos = new Set();
     let produtosFixosCustomPorTipo = {};
+    let sincronizacaoOnlineAtiva = false;
+    let aplicandoSnapshotRemoto = false;
+    let timerPushRemoto = null;
+    let timerPullRemoto = null;
+
+    const LOCAL_CHAVES_DIRETAS = [
+      CATEGORIES_STORAGE_KEY,
+      FIXED_STORAGE_KEY,
+      SHOW_EDIT_STORAGE_KEY,
+      THEME_STORAGE_KEY,
+      SELECTED_TYPE_STORAGE_KEY
+    ];
+    const LOCAL_CHAVES_COM_PREFIXO = [
+      EXTRA_STORAGE_KEY,
+      ORDER_STORAGE_KEY,
+      HIDDEN_STORAGE_KEY,
+      DELETED_STORAGE_KEY,
+      CHECK_STORAGE_KEY,
+      QUANTITY_STORAGE_KEY
+    ];
+
+    const storageSetOriginal = localStorage.setItem.bind(localStorage);
+    const storageRemoveOriginal = localStorage.removeItem.bind(localStorage);
+
+    function chaveGerenciadaPelaApp(chave) {
+      if (!chave) return false;
+      if (LOCAL_CHAVES_DIRETAS.includes(chave)) return true;
+      return LOCAL_CHAVES_COM_PREFIXO.some(prefixo => chave === prefixo || chave.startsWith(`${prefixo}:`));
+    }
+
+    function montarUrlSync() {
+      const base = String(ONLINE_SYNC_CONFIG.firebaseDatabaseUrl || "").trim().replace(/\/+$/, "");
+      if (!base) return "";
+
+      const path = `${base}/${ONLINE_SYNC_CONFIG.appId}.json`;
+      const token = String(ONLINE_SYNC_CONFIG.firebaseAuthToken || "").trim();
+      return token ? `${path}?auth=${encodeURIComponent(token)}` : path;
+    }
+
+    function snapshotLocalDaApp() {
+      const storage = {};
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const chave = localStorage.key(i);
+        if (!chaveGerenciadaPelaApp(chave)) continue;
+        storage[chave] = localStorage.getItem(chave);
+      }
+      return {
+        updatedAt: new Date().toISOString(),
+        storage
+      };
+    }
+
+    function aplicarSnapshotNoLocal(snapshot) {
+      const dados = snapshot && typeof snapshot === "object" && snapshot.storage && typeof snapshot.storage === "object"
+        ? snapshot.storage
+        : {};
+
+      aplicandoSnapshotRemoto = true;
+      try {
+        const remover = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const chave = localStorage.key(i);
+          if (chaveGerenciadaPelaApp(chave)) remover.push(chave);
+        }
+        remover.forEach(chave => storageRemoveOriginal(chave));
+
+        Object.keys(dados).forEach(chave => {
+          if (!chaveGerenciadaPelaApp(chave)) return;
+          storageSetOriginal(chave, String(dados[chave] ?? ""));
+        });
+      } finally {
+        aplicandoSnapshotRemoto = false;
+      }
+    }
+
+    async function pushSyncRemoto() {
+      if (!sincronizacaoOnlineAtiva) return;
+      const url = montarUrlSync();
+      if (!url) return;
+
+      try {
+        await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(snapshotLocalDaApp())
+        });
+      } catch (e) {
+        console.warn("Falha no push de sincronização online:", e);
+      }
+    }
+
+    function agendarPushSyncRemoto() {
+      if (!sincronizacaoOnlineAtiva || aplicandoSnapshotRemoto) return;
+      if (timerPushRemoto) clearTimeout(timerPushRemoto);
+      timerPushRemoto = setTimeout(() => {
+        timerPushRemoto = null;
+        pushSyncRemoto();
+      }, 500);
+    }
+
+    async function pullSyncRemoto() {
+      if (!sincronizacaoOnlineAtiva) return;
+      const url = montarUrlSync();
+      if (!url) return;
+
+      try {
+        const resp = await fetch(url, { method: "GET", cache: "no-store" });
+        if (!resp.ok) return;
+        const snapshot = await resp.json();
+        if (!snapshot || typeof snapshot !== "object") return;
+        aplicarSnapshotNoLocal(snapshot);
+      } catch (e) {
+        console.warn("Falha no pull de sincronização online:", e);
+      }
+    }
+
+    async function iniciarSincronizacaoOnline() {
+      const url = montarUrlSync();
+      sincronizacaoOnlineAtiva = Boolean(ONLINE_SYNC_CONFIG.enabled && url);
+      if (!sincronizacaoOnlineAtiva) return;
+
+      localStorage.setItem = function (key, value) {
+        storageSetOriginal(key, value);
+        if (chaveGerenciadaPelaApp(String(key))) agendarPushSyncRemoto();
+      };
+      localStorage.removeItem = function (key) {
+        storageRemoveOriginal(key);
+        if (chaveGerenciadaPelaApp(String(key))) agendarPushSyncRemoto();
+      };
+
+      await pullSyncRemoto();
+      timerPullRemoto = setInterval(() => {
+        pullSyncRemoto();
+      }, Math.max(2000, Number(ONLINE_SYNC_CONFIG.pollIntervalMs) || 5000));
+
+      window.addEventListener("beforeunload", () => {
+        if (timerPullRemoto) clearInterval(timerPullRemoto);
+      });
+    }
 
     function tipoAtual() {
       return tipoEstoqueEl.value;
@@ -1069,21 +1215,30 @@
       localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, idAtual);
     }
 
-    carregarCategorias();
-    carregarProdutosFixosCustom();
-    aplicarProdutosFixosCustomEmbutidos();
-    aplicarExtrasEmbutidos();
-    popularSelectCategorias();
-    carregarTabelaDoTipo();
-
-    mostrarEdicaoEl.checked = localStorage.getItem(SHOW_EDIT_STORAGE_KEY) === "1";
-    aplicarTema(localStorage.getItem(THEME_STORAGE_KEY) || "dark");
-    atualizarModoEdicao();
-    mostrarEdicaoEl.addEventListener("change", atualizarModoEdicao);
-    tipoEstoqueEl.addEventListener("change", () => {
-      localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, tipoAtual());
+    function inicializarAplicacao() {
+      carregarCategorias();
+      carregarProdutosFixosCustom();
+      aplicarProdutosFixosCustomEmbutidos();
+      aplicarExtrasEmbutidos();
+      popularSelectCategorias();
       carregarTabelaDoTipo();
-    });
+
+      mostrarEdicaoEl.checked = localStorage.getItem(SHOW_EDIT_STORAGE_KEY) === "1";
+      aplicarTema(localStorage.getItem(THEME_STORAGE_KEY) || "dark");
+      atualizarModoEdicao();
+      mostrarEdicaoEl.addEventListener("change", atualizarModoEdicao);
+      tipoEstoqueEl.addEventListener("change", () => {
+        localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, tipoAtual());
+        carregarTabelaDoTipo();
+      });
+    }
+
+    async function bootstrapApp() {
+      await iniciarSincronizacaoOnline();
+      inicializarAplicacao();
+    }
+
+    bootstrapApp();
 
     function gerarMensagem() {
       const dataHora = new Date().toLocaleString("pt-BR");
