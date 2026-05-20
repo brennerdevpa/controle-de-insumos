@@ -353,15 +353,36 @@
         "Queijo",
         "Alface",
         "Tomate",
-        "Bacon"
+        "Bacon",
+        "Batata",
+        "Queijo mussarela",
+        "Queijo parmesão",
+        "Balde de manteiga",
+        "Calabresa",
+        "Sal de parrilha",
+        "Ketchup",
+        "Cx de leite",
+        "Cx de creme de leite",
+        "Alho em pasta",
+        "Mostarda",
+        "Sal",
+        "Trigo",
+        "Acúcar",
+        "Café",
+        "Limão",
+        "Couve",
+        "Creem cheese",
+        "Bacon fatiado",
+        "Óleo de soja",
+        "Saleiro de alumínio",
+        "Luva de calor",
+        "Porção de molho",
+        "Touca",
+        "Pano de chão"
       ],
       restaurante: [
         "Arroz",
-        "Feijão",
-        "Óleo",
-        "Sal",
-        "Alho",
-        "Cebola"
+        "Feijão"
       ],
       checklist: [
         "Limpeza da cozinha",
@@ -370,14 +391,60 @@
       ]
     };
     const categoriasPadrao = [
-      { id: "hamburgueria", nome: "Insumos Hamburgueria" },
-      { id: "restaurante", nome: "Insumos Restaurante" },
-      { id: "checklist", nome: "Checklist Diário" }
+      {
+        id: "hamburgueria",
+        nome: "Insumos Hamburgueria"
+      },
+      {
+        id: "restaurante",
+        nome: "Insumos Restaurante"
+      },
+      {
+        id: "checklist",
+        nome: "Checklist Diário"
+      },
+      {
+        id: "c-sucos-1779285544540-1",
+        nome: "Poupas"
+      },
+      {
+        id: "c-salao-hamburgueria-1779287642516-1",
+        nome: "Salão - Hamburgueria"
+      },
+      {
+        id: "c-material-de-limpeza-1779288606861-1",
+        nome: "Material de limpeza - Hamburgueria"
+      }
     ];
-    const produtosFixosCustomEmbutidosPorTipo = {
-      // Exemplo:
-      // hamburgueria: ["Maionese", "Ketchup"],
-      // restaurante: ["Farinha de trigo"]
+    const produtosFixosCustomEmbutidosPorTipo = {};
+    const extrasEmbutidosPorTipo = {
+      "c-sucos-1779285544540-1": [
+        "Goiaba",
+        "Acerola",
+        "Cajú",
+        "Graviola",
+        "Cupuaçu",
+        "Abacaxi"
+      ],
+      "c-salao-hamburgueria-1779287642516-1": [
+        "Sacola 10 kg",
+        "Cx de bobina para impressora",
+        "Álcool",
+        "Caneta",
+        "Cx de bobina para maquininha/cartão",
+        "Lenço",
+        "Isopor/entregador",
+        "Canudinho",
+        "Caderno"
+      ],
+      "c-material-de-limpeza-1779288606861-1": [
+        "Detergente",
+        "Desinfetante",
+        "Sabão em barra",
+        "Bombril",
+        "Limpa alunínio",
+        "Q-boa"
+      ]
     };
 
     const tbody = document.querySelector("#estoqueTable tbody");
@@ -720,6 +787,46 @@
       return [];
     }
 
+    function aplicarExtrasEmbutidos() {
+      const tipos = Object.keys(extrasEmbutidosPorTipo);
+      if (tipos.length === 0) return;
+
+      tipos.forEach(tipo => {
+        const embutidos = Array.isArray(extrasEmbutidosPorTipo[tipo])
+          ? extrasEmbutidosPorTipo[tipo].map(item => String(item || "").trim()).filter(Boolean)
+          : [];
+        if (embutidos.length === 0) return;
+
+        const chave = `${EXTRA_STORAGE_KEY}:${tipo}`;
+        let atuais = [];
+        const salvos = localStorage.getItem(chave);
+        if (salvos) {
+          try {
+            const lista = JSON.parse(salvos);
+            if (Array.isArray(lista)) {
+              atuais = lista
+                .map(item => ({
+                  id: String(item && item.id ? item.id : ""),
+                  nome: String(item && item.nome ? item.nome : "").trim()
+                }))
+                .filter(item => item.id && item.nome);
+            }
+          } catch (e) {
+            console.error("Erro ao carregar extras para embutir:", e);
+          }
+        }
+
+        const nomesExistentes = new Set(atuais.map(item => item.nome.toLowerCase()));
+        const novos = embutidos
+          .filter(nome => !nomesExistentes.has(nome.toLowerCase()))
+          .map(nome => ({ id: `e-${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, nome }));
+
+        if (novos.length > 0) {
+          localStorage.setItem(chave, JSON.stringify([...atuais, ...novos]));
+        }
+      });
+    }
+
     function salvarOrdem() {
       const ordem = Array.from(tbody.querySelectorAll("tr")).map(linha => linha.dataset.rowId);
       localStorage.setItem(chavePorTipo(ORDER_STORAGE_KEY), JSON.stringify(ordem));
@@ -965,6 +1072,7 @@
     carregarCategorias();
     carregarProdutosFixosCustom();
     aplicarProdutosFixosCustomEmbutidos();
+    aplicarExtrasEmbutidos();
     popularSelectCategorias();
     carregarTabelaDoTipo();
 
@@ -1139,6 +1247,7 @@
       });
       document.querySelectorAll("input[type='number']").forEach(input => input.value = "");
     }
+
   </script>
 
 </body>
