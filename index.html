@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -93,6 +91,7 @@
       gap: 6px;
     }
 
+
     .table-container {
       width: 100%;
       overflow-x: auto;
@@ -170,6 +169,42 @@
 
     #addRowBtn:hover {
       background: var(--orange-hover);
+    }
+
+    #addCategoryBtn {
+      background: var(--neutral-btn);
+      margin-top: 8px;
+      font-size: 13px;
+      padding: 8px 10px;
+      width: 95%;
+    }
+
+    #addCategoryBtn:hover {
+      background: var(--neutral-btn-hover);
+    }
+
+    #removeCategoryBtn {
+      background: var(--danger);
+      margin-top: 8px;
+      font-size: 13px;
+      padding: 8px 10px;
+      width: 95%;
+    }
+
+    #removeCategoryBtn:hover {
+      background: var(--danger-hover);
+    }
+
+    #renameCategoryBtn {
+      background: var(--neutral-btn);
+      margin-top: 8px;
+      font-size: 13px;
+      padding: 8px 10px;
+      width: 95%;
+    }
+
+    #renameCategoryBtn:hover {
+      background: var(--neutral-btn-hover);
     }
 
     #whatsappBtn {
@@ -262,6 +297,10 @@
     #estoqueTable:not(.show-edit) .controls-col {
       display: none;
     }
+
+    body:not(.show-edit-mode) .edit-only {
+      display: none;
+    }
   </style>
 </head>
 
@@ -273,10 +312,10 @@
 
     <label for="tipoEstoque">Tipo:</label>
     <select id="tipoEstoque">
-      <option value="hamburgueria">Insumos Hamburgueria</option>
-      <option value="restaurante">Insumos Restaurante</option>
-      <option value="checklist">Checklist Diário</option>
     </select>
+    <button id="addCategoryBtn" class="edit-only" type="button" onclick="adicionarCategoria()">Nova categoria</button>
+    <button id="renameCategoryBtn" class="edit-only" type="button" onclick="editarNomeCategoriaAtual()">Editar nome da categoria</button>
+    <button id="removeCategoryBtn" class="edit-only" type="button" onclick="excluirCategoriaAtual()">Excluir categoria atual</button>
 
     <label class="show-edit-wrap">
       <input type="checkbox" id="mostrarEdicao">
@@ -290,6 +329,7 @@
         <tr>
           <th>Produto</th>
           <th>OK</th>
+          <th>Quantidade</th>
           <th class="controls-col">Itens</th>
         </tr>
       </thead>
@@ -329,6 +369,16 @@
         "Conferir freezers e geladeiras"
       ]
     };
+    const categoriasPadrao = [
+      { id: "hamburgueria", nome: "Insumos Hamburgueria" },
+      { id: "restaurante", nome: "Insumos Restaurante" },
+      { id: "checklist", nome: "Checklist Diário" }
+    ];
+    const produtosFixosCustomEmbutidosPorTipo = {
+      // Exemplo:
+      // hamburgueria: ["Maionese", "Ketchup"],
+      // restaurante: ["Farinha de trigo"]
+    };
 
     const tbody = document.querySelector("#estoqueTable tbody");
     const estoqueTableEl = document.getElementById("estoqueTable");
@@ -340,23 +390,152 @@
     const HIDDEN_STORAGE_KEY = "itensOcultosV3";
     const DELETED_STORAGE_KEY = "itensExcluidosV3";
     const CHECK_STORAGE_KEY = "marcacoesV1";
+    const QUANTITY_STORAGE_KEY = "quantidadesV1";
     const SHOW_EDIT_STORAGE_KEY = "mostrarEdicaoV1";
     const THEME_STORAGE_KEY = "temaV1";
     const SELECTED_TYPE_STORAGE_KEY = "tipoSelecionadoV1";
+    const CATEGORIES_STORAGE_KEY = "categoriasV1";
+    const FIXED_STORAGE_KEY = "produtosFixosCustomV1";
     let extraCounter = 0;
+    let categoryCounter = 0;
+    let categoriasConfiguradas = [];
     const idsOcultos = new Set();
     const idsExcluidos = new Set();
+    let produtosFixosCustomPorTipo = {};
 
     function tipoAtual() {
       return tipoEstoqueEl.value;
+    }
+
+    function obterProdutosFixosCustomDoTipo() {
+      const lista = produtosFixosCustomPorTipo[tipoAtual()] || [];
+      return Array.isArray(lista) ? lista : [];
     }
 
     function chavePorTipo(chaveBase) {
       return `${chaveBase}:${tipoAtual()}`;
     }
 
+    function gerarIdCategoria(nome) {
+      const base = String(nome || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 40) || "categoria";
+
+      categoryCounter += 1;
+      return `c-${base}-${Date.now()}-${categoryCounter}`;
+    }
+
+    function obterCategoriasConfiguradas() {
+      return categoriasConfiguradas.slice();
+    }
+
+    function salvarCategorias() {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(obterCategoriasConfiguradas()));
+    }
+
+    function salvarProdutosFixosCustom() {
+      localStorage.setItem(FIXED_STORAGE_KEY, JSON.stringify(produtosFixosCustomPorTipo));
+    }
+
+    function carregarProdutosFixosCustom() {
+      const salvos = localStorage.getItem(FIXED_STORAGE_KEY);
+      produtosFixosCustomPorTipo = {};
+
+      if (!salvos) {
+        salvarProdutosFixosCustom();
+        return;
+      }
+
+      try {
+        const dados = JSON.parse(salvos);
+        if (dados && typeof dados === "object" && !Array.isArray(dados)) {
+          Object.keys(dados).forEach(tipo => {
+            const lista = Array.isArray(dados[tipo]) ? dados[tipo] : [];
+            produtosFixosCustomPorTipo[tipo] = lista
+              .map(item => String(item || "").trim())
+              .filter(Boolean);
+          });
+        }
+      } catch (e) {
+        console.error("Erro ao carregar produtos fixos customizados:", e);
+      }
+
+      salvarProdutosFixosCustom();
+    }
+
+    function aplicarProdutosFixosCustomEmbutidos() {
+      const tipos = Object.keys(produtosFixosCustomEmbutidosPorTipo);
+      if (tipos.length === 0) return;
+
+      tipos.forEach(tipo => {
+        const embutidos = Array.isArray(produtosFixosCustomEmbutidosPorTipo[tipo])
+          ? produtosFixosCustomEmbutidosPorTipo[tipo].map(item => String(item || "").trim()).filter(Boolean)
+          : [];
+        if (embutidos.length === 0) return;
+
+        const existentes = new Set((produtosFixosCustomPorTipo[tipo] || []).map(item => String(item).toLowerCase()));
+        const novos = embutidos.filter(item => !existentes.has(item.toLowerCase()));
+        if (novos.length === 0) return;
+
+        produtosFixosCustomPorTipo[tipo] = [...(produtosFixosCustomPorTipo[tipo] || []), ...novos];
+      });
+
+      salvarProdutosFixosCustom();
+    }
+
+    function carregarCategorias() {
+      const salvas = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      let categorias = categoriasPadrao.map(cat => ({ ...cat }));
+
+      if (salvas) {
+        try {
+          const lista = JSON.parse(salvas);
+          if (Array.isArray(lista)) {
+            const normalizadas = lista
+              .map(item => ({
+                id: String(item && item.id ? item.id : "").trim(),
+                nome: String(item && item.nome ? item.nome : "").trim()
+              }));
+            const validas = normalizadas.filter(item => item.id && item.nome);
+            if (validas.length > 0) {
+              categorias = validas;
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao carregar categorias:", e);
+        }
+      }
+
+      categoriasConfiguradas = categorias;
+      salvarCategorias();
+    }
+
+    function popularSelectCategorias() {
+      const selecionado = localStorage.getItem(SELECTED_TYPE_STORAGE_KEY) || tipoEstoqueEl.value;
+      tipoEstoqueEl.innerHTML = "";
+
+      obterCategoriasConfiguradas().forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat.id;
+        option.textContent = cat.nome;
+        tipoEstoqueEl.appendChild(option);
+      });
+
+      if (selecionado && tipoEstoqueEl.querySelector(`option[value="${selecionado}"]`)) {
+        tipoEstoqueEl.value = selecionado;
+      } else if (tipoEstoqueEl.options.length > 0) {
+        tipoEstoqueEl.selectedIndex = 0;
+      }
+    }
+
     function obterProdutosFixosDoTipo() {
-      const lista = produtosFixosPorTipo[tipoAtual()] || [];
+      const listaPadrao = produtosFixosPorTipo[tipoAtual()] || [];
+      const listaCustom = obterProdutosFixosCustomDoTipo();
+      const lista = [...listaPadrao, ...listaCustom];
       return lista.map((nome, indice) => ({ id: `f-${tipoAtual()}-${indice}`, nome }));
     }
 
@@ -383,6 +562,7 @@
       tr.innerHTML = `
         <td>${escaparHtml(nomeProduto)}</td>
         <td><input type="checkbox"></td>
+        <td><input type="number" min="0" step="1" placeholder="0"></td>
         <td class="order-controls controls-col">
           <button type="button" class="move-btn" data-dir="-1">↑</button>
           <button type="button" class="move-btn" data-dir="1">↓</button>
@@ -398,6 +578,7 @@
       tr.querySelector(".toggle-hide-btn").addEventListener("click", () => alternarOculto(tr));
       tr.querySelector(".delete-btn").addEventListener("click", () => excluirLinha(tr));
       tr.querySelector("input[type='checkbox']").addEventListener("change", salvarMarcacoes);
+      tr.querySelector("input[type='number']").addEventListener("input", salvarQuantidades);
 
       tbody.appendChild(tr);
       return tr;
@@ -599,12 +780,41 @@
       }
     }
 
+    function salvarQuantidades() {
+      const dados = Array.from(tbody.querySelectorAll("tr")).map(linha => ({
+        id: linha.dataset.rowId,
+        quantidade: linha.cells[2].querySelector("input[type='number']").value
+      }));
+      localStorage.setItem(chavePorTipo(QUANTITY_STORAGE_KEY), JSON.stringify(dados));
+    }
+
+    function carregarQuantidades() {
+      const salvas = localStorage.getItem(chavePorTipo(QUANTITY_STORAGE_KEY));
+      if (!salvas) return;
+
+      try {
+        const lista = JSON.parse(salvas);
+        if (!Array.isArray(lista)) return;
+
+        const mapa = new Map(lista.map(item => [String(item.id), String(item.quantidade || "")]));
+        Array.from(tbody.querySelectorAll("tr")).forEach(linha => {
+          const valor = mapa.get(linha.dataset.rowId);
+          if (valor !== undefined) {
+            linha.cells[2].querySelector("input[type='number']").value = valor;
+          }
+        });
+      } catch (e) {
+        console.error("Erro ao carregar quantidades:", e);
+      }
+    }
+
     function salvarEstadoTabela() {
       salvarExtras();
       salvarOrdem();
       salvarOcultos();
       salvarExcluidos();
       salvarMarcacoes();
+      salvarQuantidades();
     }
 
     function carregarTabelaDoTipo() {
@@ -622,12 +832,14 @@
       carregarOcultos();
       aplicarOcultosSalvos();
       carregarMarcacoes();
+      carregarQuantidades();
       salvarOrdem();
     }
 
     function atualizarModoEdicao() {
       const mostrar = mostrarEdicaoEl.checked;
       estoqueTableEl.classList.toggle("show-edit", mostrar);
+      document.body.classList.toggle("show-edit-mode", mostrar);
       aplicarOcultosSalvos();
       localStorage.setItem(SHOW_EDIT_STORAGE_KEY, mostrar ? "1" : "0");
     }
@@ -665,11 +877,95 @@
       salvarEstadoTabela();
     }
 
-    const tipoSalvo = localStorage.getItem(SELECTED_TYPE_STORAGE_KEY);
-    if (tipoSalvo && tipoEstoqueEl.querySelector(`option[value="${tipoSalvo}"]`)) {
-      tipoEstoqueEl.value = tipoSalvo;
+    function adicionarCategoria() {
+      const nome = prompt("Digite o nome da nova categoria:");
+      if (nome === null) return;
+
+      const nomeLimpo = nome.trim();
+      if (!nomeLimpo) {
+        alert("Informe um nome válido para a categoria.");
+        return;
+      }
+
+      const jaExiste = obterCategoriasConfiguradas()
+        .some(cat => cat.nome.toLowerCase() === nomeLimpo.toLowerCase());
+      if (jaExiste) {
+        alert("Já existe uma categoria com este nome.");
+        return;
+      }
+
+      const nova = { id: gerarIdCategoria(nomeLimpo), nome: nomeLimpo };
+      categoriasConfiguradas.push(nova);
+      salvarCategorias();
+      popularSelectCategorias();
+      tipoEstoqueEl.value = nova.id;
+      localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, nova.id);
+      carregarTabelaDoTipo();
     }
 
+    function excluirCategoriaAtual() {
+      const idAtual = tipoAtual();
+      const categoriaAtual = obterCategoriasConfiguradas().find(cat => cat.id === idAtual);
+      if (!categoriaAtual) return;
+
+      const confirmar = confirm(`Deseja excluir a categoria "${categoriaAtual.nome}"?\nTodos os dados dela serão removidos.`);
+      if (!confirmar) return;
+
+      categoriasConfiguradas = categoriasConfiguradas.filter(cat => cat.id !== idAtual);
+      if (categoriasConfiguradas.length === 0) {
+        alert("É necessário manter pelo menos uma categoria.");
+        categoriasConfiguradas = [categoriaAtual];
+        return;
+      }
+      salvarCategorias();
+
+      localStorage.removeItem(`${EXTRA_STORAGE_KEY}:${idAtual}`);
+      localStorage.removeItem(`${ORDER_STORAGE_KEY}:${idAtual}`);
+      localStorage.removeItem(`${HIDDEN_STORAGE_KEY}:${idAtual}`);
+      localStorage.removeItem(`${DELETED_STORAGE_KEY}:${idAtual}`);
+      localStorage.removeItem(`${CHECK_STORAGE_KEY}:${idAtual}`);
+      localStorage.removeItem(`${QUANTITY_STORAGE_KEY}:${idAtual}`);
+      delete produtosFixosCustomPorTipo[idAtual];
+      salvarProdutosFixosCustom();
+
+      popularSelectCategorias();
+      const novoSelecionado = tipoEstoqueEl.value;
+      localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, novoSelecionado);
+      carregarTabelaDoTipo();
+    }
+
+    function editarNomeCategoriaAtual() {
+      const idAtual = tipoAtual();
+      const categoriaAtual = obterCategoriasConfiguradas().find(cat => cat.id === idAtual);
+      if (!categoriaAtual) return;
+
+      const novoNome = prompt("Digite o novo nome da categoria:", categoriaAtual.nome);
+      if (novoNome === null) return;
+
+      const nomeLimpo = novoNome.trim();
+      if (!nomeLimpo) {
+        alert("Informe um nome válido para a categoria.");
+        return;
+      }
+
+      const nomeJaExiste = obterCategoriasConfiguradas()
+        .some(cat => cat.id !== idAtual && cat.nome.toLowerCase() === nomeLimpo.toLowerCase());
+      if (nomeJaExiste) {
+        alert("Já existe uma categoria com este nome.");
+        return;
+      }
+
+      categoriaAtual.nome = nomeLimpo;
+      salvarCategorias();
+      popularSelectCategorias();
+      tipoEstoqueEl.value = idAtual;
+      localStorage.setItem(SELECTED_TYPE_STORAGE_KEY, idAtual);
+    }
+
+    carregarCategorias();
+    carregarProdutosFixosCustom();
+    aplicarProdutosFixosCustomEmbutidos();
+    popularSelectCategorias();
     carregarTabelaDoTipo();
 
     mostrarEdicaoEl.checked = localStorage.getItem(SHOW_EDIT_STORAGE_KEY) === "1";
@@ -683,11 +979,7 @@
 
     function gerarMensagem() {
       const dataHora = new Date().toLocaleString("pt-BR");
-      const tipos = [
-        { id: "hamburgueria", nome: "Insumos Hamburgueria" },
-        { id: "restaurante", nome: "Insumos Restaurante" },
-        { id: "checklist", nome: "Checklist Diário" }
-      ];
+      const tipos = obterCategoriasConfiguradas();
 
       const tipoOriginal = tipoAtual();
       let mensagem = `📋 Checklist Geral\nData/Hora: ${dataHora}\n\n`;
@@ -764,6 +1056,22 @@
           }
         }
 
+        const quantidadesSalvas = localStorage.getItem(`${QUANTITY_STORAGE_KEY}:${tipo.id}`);
+        const mapaQuantidades = new Map();
+        if (quantidadesSalvas) {
+          try {
+            const lista = JSON.parse(quantidadesSalvas);
+            if (Array.isArray(lista)) {
+              lista.forEach(item => {
+                if (!item || !item.id) return;
+                mapaQuantidades.set(String(item.id), String(item.quantidade || "").trim());
+              });
+            }
+          } catch (e) {
+            console.error("Erro ao ler quantidades para mensagem:", e);
+          }
+        }
+
         const todosItens = [...fixos.filter(item => !idsExcluidosTipo.has(item.id)), ...extras];
         const mapaItens = new Map(todosItens.map(item => [item.id, item.nome]));
         const idsOrdenados = [];
@@ -780,7 +1088,10 @@
           .filter(id => idsMarcados.has(id) && !idsOcultosTipo.has(id))
           .map(id => {
             const nome = todosItens.find(item => item.id === id)?.nome || "";
-            return nome.trim();
+            const quantidade = mapaQuantidades.get(id) || "";
+            const nomeLimpo = nome.trim();
+            if (!nomeLimpo) return "";
+            return quantidade ? `${nomeLimpo} (${quantidade})` : nomeLimpo;
           })
           .filter(Boolean);
 
@@ -822,13 +1133,13 @@
       if (!confirm("Deseja realmente limpar todos os contadores?")) return;
 
       document.querySelectorAll("input[type='checkbox']").forEach(input => input.checked = false);
-      ["hamburgueria", "restaurante", "checklist"].forEach(tipo => {
-        localStorage.removeItem(`${CHECK_STORAGE_KEY}:${tipo}`);
+      obterCategoriasConfiguradas().forEach(tipo => {
+        localStorage.removeItem(`${CHECK_STORAGE_KEY}:${tipo.id}`);
+        localStorage.removeItem(`${QUANTITY_STORAGE_KEY}:${tipo.id}`);
       });
+      document.querySelectorAll("input[type='number']").forEach(input => input.value = "");
     }
   </script>
 
 </body>
 </html>
-
-
